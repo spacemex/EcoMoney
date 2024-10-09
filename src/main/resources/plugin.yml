@@ -1,0 +1,5 @@
+name: Ecomoney
+version: '1.0-SNAPSHOT -A'
+main: com.github.spacemex.ecomoney.Ecomoney
+api-version: '1.21'
+depend: [Vault]
