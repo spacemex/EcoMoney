@@ -1,0 +1,15 @@
+
+setup-provider: true
+starting-balance: 500.0
+
+
+data:
+  storage-file: sqlite
+mysql:
+  host: localhost
+  port: 3306
+  database: economy
+  user: admin
+  password: 1234
+sqlite:
+  path: plugins/ecomoney/econ/Economy.db
