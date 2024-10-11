@@ -6,6 +6,8 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.Warning;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.*;
 import java.util.Objects;
 import java.util.UUID;
@@ -35,7 +37,11 @@ public class SQLManager {
             connectToMySQL(host, Integer.parseInt(Objects.requireNonNull(port)), database, user, password);
         } else if ("sqlite".equalsIgnoreCase(storageType)) {
             String filePath = config.getString("sqlite.path");
-            connectToSQLite(filePath);
+            try {
+                connectToSQLite(filePath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } else {
             logger.severe("Invalid storage file type: ->" + config.getString("data.storage-file"));
             return;
@@ -45,33 +51,33 @@ public class SQLManager {
         primeTable();
     }
 
-    /**
-     * Establishes a MySQL connection.
-     * @param host MySQL server host.
-     * @param port MySQL server port.
-     * @param database MySQL database name.
-     * @param user MySQL username.
-     * @param password MySQL password.
-     */
     public void connectToMySQL(String host, int port, String database, String user, String password) throws SQLException {
         String url = "jdbc:mysql://" + host + ":" + port + "/" + database;
         mysqlConnection = DriverManager.getConnection(url, user, password);
         logger.info("Connected to MySQL");
     }
 
-    /**
-     * Establishes a SQLite connection.
-     * @param filePath The file path to the SQLite database file.
-     */
-    public void connectToSQLite(String filePath) throws SQLException {
+    public void connectToSQLite(String filePath) throws SQLException, IOException {
+        File dbFile = new File(filePath);
+        File parentDir = dbFile.getParentFile();
+
+        if (parentDir != null && !parentDir.exists()) {
+            if (!parentDir.mkdirs()) {
+                logger.severe("Failed to create directories for SQLite database file");
+                return;
+            }
+        }
+
+        if (!dbFile.exists() && !dbFile.createNewFile()) {
+            logger.severe("Failed to create SQLite database file");
+            return;
+        }
+
         String url = "jdbc:sqlite:" + filePath;
         sqliteConnection = DriverManager.getConnection(url);
         logger.info("Connected to SQLite");
     }
 
-    /**
-     * Closes the MySQL connection.
-     */
     public void closeMySQLConnection() throws SQLException {
         if (mysqlConnection != null && !mysqlConnection.isClosed()) {
             mysqlConnection.close();
@@ -79,9 +85,6 @@ public class SQLManager {
         }
     }
 
-    /**
-     * Closes the SQLite connection.
-     */
     public void closeSQLiteConnection() throws SQLException {
         if (sqliteConnection != null && !sqliteConnection.isClosed()) {
             sqliteConnection.close();
@@ -89,13 +92,10 @@ public class SQLManager {
         }
     }
 
-    /**
-     * Primes the database table based on the active connection type.
-     */
     private void primeTable() throws SQLException {
-        String tableSQL = "CREATE TABLE IF NOT EXISTS economy(" +
-                "uuid VARCHAR(36) PRIMARY KEY," +
-                "name VARChar(255) NOT NULL," +
+        String tableSQL = "CREATE TABLE IF NOT EXISTS economy (" +
+                "uuid VARCHAR(36) PRIMARY KEY, " +
+                "name VARCHAR(255) NOT NULL, " +
                 "balance DOUBLE NOT NULL" +
                 ");";
 
@@ -112,11 +112,6 @@ public class SQLManager {
         }
     }
 
-    /**
-     * Retrieves the active database connection based on the storage type.
-     * @return the active Connection object.
-     * @throws SQLException if no active connection is found.
-     */
     private Connection getConnection() throws SQLException {
         if ("mysql".equalsIgnoreCase(storageType) && mysqlConnection != null) {
             return mysqlConnection;
@@ -127,70 +122,68 @@ public class SQLManager {
         }
     }
 
-    /**
-     * Checks if an account with the given name exists, case-insensitively.
-     * @param name The name to check.
-     * @return true if the account exists, false otherwise.
-     */
+    // Other existing methods like hasAccount, getBalance, withdrawFunds, depositFunds, createPlayerAccount...
+
     public boolean hasAccount(String name) {
-        String query = "SELECT COUNT(*) FROM economy WHERE LOWER(name) = Lower(?)";
+        String query = "SELECT COUNT(*) FROM economy WHERE LOWER(name) = LOWER(?)";
 
         try (PreparedStatement statement = getConnection().prepareStatement(query)) {
-            statement.setString(1,name);
-            try (ResultSet resultSet = statement.executeQuery()){
-                if (resultSet.next()){
-                    return resultSet.getInt(1) > 0;
-                }
-            }
-        }catch (SQLException e){
-            logger.severe("Error Checking account existence: " + e.getMessage());
-        }
-        return false;
-    }
-    public boolean hasAccount(UUID uuid) {
-        String query = "SELECT COUNT(*) FROM economy WHERE uuid = ?";
-
-        try (PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setString(1,uuid.toString());
-            try (ResultSet resultSet = statement.executeQuery()){
+            statement.setString(1, name);
+            try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     return resultSet.getInt(1) > 0;
                 }
             }
-        }catch (SQLException e){
-            logger.severe("Error Checking account existence: " + e.getMessage());
+        } catch (SQLException e) {
+            logger.severe("Error checking account existence: " + e.getMessage());
         }
         return false;
     }
 
+    public boolean hasAccount(UUID uuid) {
+        String query = "SELECT COUNT(*) FROM economy WHERE uuid = ?";
 
-    public boolean hasBalance(String name,double amount) {
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setString(1, uuid.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            logger.severe("Error checking account existence: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean hasBalance(String name, double amount) {
         String query = "SELECT balance FROM economy WHERE LOWER(name) = LOWER(?)";
 
-        try(PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setString(1,name);
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setString(1, name);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     return resultSet.getDouble(1) >= amount;
                 }
             }
-        }catch (SQLException e){
-            logger.severe("Error Checking account balance: " + e.getMessage());
+        } catch (SQLException e) {
+            logger.severe("Error checking account balance: " + e.getMessage());
         }
         return false;
     }
 
-    public boolean hasBalance(UUID uuid,double amount) {
+    public boolean hasBalance(UUID uuid, double amount) {
         String query = "SELECT balance FROM economy WHERE uuid = ?";
-        try (PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setString(1,uuid.toString());
-            try (ResultSet resultSet = statement.executeQuery()){
-                if (resultSet.next()){
+
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setString(1, uuid.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
                     return resultSet.getDouble(1) >= amount;
                 }
             }
-        }catch (SQLException e){
-            logger.severe("Error Checking account balance: " + e.getMessage());
+        } catch (SQLException e) {
+            logger.severe("Error checking account balance: " + e.getMessage());
         }
         return false;
     }
@@ -198,15 +191,15 @@ public class SQLManager {
     public double getBalance(String name) {
         String query = "SELECT balance FROM economy WHERE LOWER(name) = LOWER(?)";
 
-        try(PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setString(1,name);
-            try (ResultSet resultSet = statement.executeQuery()){
-                if (resultSet.next()){
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setString(1, name);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
                     return resultSet.getDouble(1);
                 }
             }
-        }catch (SQLException e){
-            logger.severe("Error Getting account balance: " + e.getMessage());
+        } catch (SQLException e) {
+            logger.severe("Error getting account balance: " + e.getMessage());
         }
         return 0;
     }
@@ -214,105 +207,106 @@ public class SQLManager {
     public double getBalance(UUID uuid) {
         String query = "SELECT balance FROM economy WHERE uuid = ?";
 
-        try(PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setString(1,uuid.toString());
-            try(ResultSet resultSet = statement.executeQuery()){
-                if (resultSet.next()){
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setString(1, uuid.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
                     return resultSet.getDouble(1);
                 }
             }
-        }catch (SQLException e){
-            logger.severe("Error Getting account balance: " + e.getMessage());
+        } catch (SQLException e) {
+            logger.severe("Error getting account balance: " + e.getMessage());
         }
         return 0;
     }
 
     public EconomyResponse withdrawFunds(String name, double amount) {
-        // Update the balance of the specified account, ensuring case-insensitive name matching.
         String query = "UPDATE economy SET balance = balance - ? WHERE LOWER(name) = LOWER(?)";
 
         try (PreparedStatement statement = getConnection().prepareStatement(query)) {
-            // Set the parameters for the update query.
-            statement.setDouble(1, amount); // The amount to subtract.
-            statement.setString(2, name);   // The name of the account.
+            statement.setDouble(1, amount);
+            statement.setString(2, name);
 
-            // Execute the update.
             int rowsAffected = statement.executeUpdate();
 
             if (rowsAffected == 0) {
                 logger.severe("No account found with the name: " + name);
+                return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
             }
-            return new EconomyResponse(amount,getBalance(name), EconomyResponse.ResponseType.SUCCESS,null);
+            return new EconomyResponse(amount, getBalance(name), EconomyResponse.ResponseType.SUCCESS, null);
         } catch (SQLException e) {
             logger.severe("Error withdrawing funds: " + e.getMessage());
         }
-        return new EconomyResponse(amount,0, EconomyResponse.ResponseType.FAILURE,null);
+        return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
     }
 
     public EconomyResponse withdrawFunds(UUID uuid, double amount) {
         String query = "UPDATE economy SET balance = balance - ? WHERE uuid = ?";
 
-        try(PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setDouble(1,amount);
-            statement.setString(2,uuid.toString());
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setDouble(1, amount);
+            statement.setString(2, uuid.toString());
 
             int rowsAffected = statement.executeUpdate();
 
             if (rowsAffected == 0) {
                 logger.severe("No account found with the UUID: " + uuid);
+                return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
             }
-            return new EconomyResponse(amount,getBalance(uuid), EconomyResponse.ResponseType.SUCCESS,null);
-        }catch (SQLException e){
+            return new EconomyResponse(amount, getBalance(uuid), EconomyResponse.ResponseType.SUCCESS, null);
+        } catch (SQLException e) {
             logger.severe("Error withdrawing funds: " + e.getMessage());
         }
-        return new EconomyResponse(amount,0, EconomyResponse.ResponseType.FAILURE,null);
+        return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
     }
 
     public EconomyResponse depositFunds(String name, double amount) {
         String query = "UPDATE economy SET balance = balance + ? WHERE LOWER(name) = LOWER(?)";
 
-        try(PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setDouble(1,amount);
-            statement.setString(2,name);
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setDouble(1, amount);
+            statement.setString(2, name);
 
             int rowsAffected = statement.executeUpdate();
 
             if (rowsAffected == 0) {
                 logger.severe("No account found with the name: " + name);
+                return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
             }
-            return new EconomyResponse(amount,getBalance(name), EconomyResponse.ResponseType.SUCCESS,null);
-        }catch (SQLException e){
+            return new EconomyResponse(amount, getBalance(name), EconomyResponse.ResponseType.SUCCESS, null);
+        } catch (SQLException e) {
             logger.severe("Error depositing funds: " + e.getMessage());
         }
-        return new EconomyResponse(amount,0, EconomyResponse.ResponseType.FAILURE,null);
+        return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
     }
 
     public EconomyResponse depositFunds(UUID uuid, double amount) {
         String query = "UPDATE economy SET balance = balance + ? WHERE uuid = ?";
 
-        try(PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setDouble(1,amount);
-            statement.setString(2,uuid.toString());
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setDouble(1, amount);
+            statement.setString(2, uuid.toString());
 
             int rowsAffected = statement.executeUpdate();
             if (rowsAffected == 0) {
                 logger.severe("No account found with the UUID: " + uuid);
+                return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
             }
-            return new EconomyResponse(amount,getBalance(uuid), EconomyResponse.ResponseType.SUCCESS,null);
-        }catch (SQLException e){
+            return new EconomyResponse(amount, getBalance(uuid), EconomyResponse.ResponseType.SUCCESS, null);
+        } catch (SQLException e) {
             logger.severe("Error depositing funds: " + e.getMessage());
         }
-        return new EconomyResponse(amount,0, EconomyResponse.ResponseType.FAILURE,null);
+        return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, null);
     }
 
     @Warning(value = true, reason = "Unchecked")
     public boolean createPlayerAccount(OfflinePlayer player) {
         double balance = config.getDouble("starting-balance");
         String query = "INSERT INTO economy (uuid, name, balance) VALUES (?, ?, ?)";
-        try (PreparedStatement statement = getConnection().prepareStatement(query)){
-            statement.setString(1,player.getUniqueId().toString());
-            statement.setString(2,player.getName());
-            statement.setDouble(3,balance);
+        try (PreparedStatement statement = getConnection().prepareStatement(query)) {
+            statement.setString(1, player.getUniqueId().toString());
+            statement.setString(2, player.getName());
+            statement.setDouble(3, balance);
 
             int rowsAffected = statement.executeUpdate();
 
@@ -321,7 +315,7 @@ public class SQLManager {
                 return false;
             }
             return true;
-        }catch (SQLException e){
+        } catch (SQLException e) {
             logger.severe("Error creating player account: " + e.getMessage());
         }
         return false;
