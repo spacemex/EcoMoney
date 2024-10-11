@@ -7,7 +7,6 @@ import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Logger;
 
