@@ -3,3 +3,13 @@ version: '1.0-SNAPSHOT -A'
 main: com.github.spacemex.ecomoney.Ecomoney
 api-version: '1.21'
 depend: [Vault]
+commands:
+  balance:
+    permission: ecomoney.balance
+    usage: /balance <player>
+    description: Get the balance of player's
+permissions:
+  ecomoney.*:
+    default: op
+    description: Gives all ecomoney's permissions
+    children: [ecomoney.balance,ecomoney.balance.others]
