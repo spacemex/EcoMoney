@@ -234,4 +234,28 @@ public class EconomyProvider implements Economy {
     public boolean createPlayerAccount(OfflinePlayer offlinePlayer, String s) {
         return false;
     }
+
+    public boolean resetPlayerAccount(String s) {
+        return sqlManager.resetPlayerAccount(s);
+    }
+
+    public boolean resetPlayerAccount(OfflinePlayer offlinePlayer) {
+        return resetPlayerAccount(offlinePlayer.getName());
+    }
+
+    public boolean resetPlayerAccount(String s, String s1) {
+        return resetPlayerAccount(s);
+    }
+
+    public boolean deletePlayerAccount(String s) {
+        return sqlManager.deletePlayerAccount(s);
+    }
+
+    public boolean deletePlayerAccount(OfflinePlayer offlinePlayer) {
+        return deletePlayerAccount(offlinePlayer.getName());
+    }
+
+    public boolean deletePlayerAccount(OfflinePlayer offlinePlayer, String s) {
+        return deletePlayerAccount(offlinePlayer.getName());
+    }
 }
