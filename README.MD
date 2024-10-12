@@ -13,14 +13,13 @@ Ecomoney is a lightweight and simple economy plugin for Minecraft servers runnin
 
 ## Commands
 
-- **/pay `<player>` `<amount>`**: Pay another player.
-- **/deposit `<amount>`**: Deposit money into your account.
-- **/withdraw `<amount>`**: Withdraw money from your account as a physical item.
-- **/give `<player>` `<amount>`**: Give money to a player.
-- **/take `<player>` `<amount>`**: Take money from a player.
-- **/reset `<player>`**: Reset a player's balance.
-- **/set `<player>` `<amount>`**: Set a player's balance.
-- **/delete `<player>`**: Delete a player's account.
+- **/pay `<player>` `<amount>`**: Pay another player. /
+- **/withdraw `<amount>`**: Withdraw money from your account as a physical item./
+- **/give `<player>` `<amount>`**: Give money to a player. /
+- **/take `<player>` `<amount>`**: Take money from a player. /
+- **/reset `<player>`**: Reset a player's balance. /
+- **/set `<player>` `<amount>`**: Set a player's balance. /
+- **/delete `<player>`**: Delete a player's account. /
 
 ## Permissions
 
