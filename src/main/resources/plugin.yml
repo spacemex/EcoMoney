@@ -6,10 +6,63 @@ depend: [Vault]
 commands:
   balance:
     permission: ecomoney.balance
+    aliases:
+      - bal
     usage: /balance <player>
     description: Get the balance of player's
+  ecogive:
+    permission: ecomoney.give
+    aliases:
+      - eg
+      - ecog
+      - egive
+    usage: /ecogive <player> <amount>
+    description: Give player funds
+  ecoreset:
+    permission: ecomoney.reset
+    aliases:
+      - ereset
+    usage: /ecoreset <player>
+  ecotake:
+    permission: ecomoney.take
+    aliases:
+      - etake
+    usage: /ecotake <player> <amount>
+  pay:
+    permission: ecomoney.pay
+    usage: /pay <player> <amount>
+  ecodelete:
+    permission: ecomoney.delete
+    usage: /ecodelete <player>
+  withdraw:
+    permission: ecomoney.withdraw
+    usage: /withdraw <type> <amount>
 permissions:
+  ecomoney.balance:
+    default: not op
+  ecomoney.balance.other:
+    default: op
+  ecomoney.give:
+    default: op
+  ecomoney.take:
+    default: op
+  ecomoney.reset:
+    default: op
+  ecomoney.delete:
+    default: op
+  ecomoney.pay:
+    default: not op
+  ecomoney.withdraw:
+    default: not op
   ecomoney.*:
     default: op
     description: Gives all ecomoney's permissions
-    children: [ecomoney.balance,ecomoney.balance.others]
+    children:
+      - ecomoney.balance
+      - ecomoney.balance.other
+      - ecomoney.give
+      - ecomoney.take
+      - ecomoney.reset
+      - ecomoney.delete
+      - ecomoney.pay
+      - ecomoney.withdraw
