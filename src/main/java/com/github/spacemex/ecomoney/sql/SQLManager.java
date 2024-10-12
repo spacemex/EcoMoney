@@ -337,4 +337,61 @@ public class SQLManager {
         }
         return false;
     }
+
+    public boolean resetPlayerAccount(UUID uuid) {
+        String query = "UPDATE economy SET balance = ? WHERE uuid = ?";
+        double balance = config.getDouble("starting-balance");
+        try(PreparedStatement statement = getConnection().prepareStatement(query)){
+            statement.setDouble(1,balance);
+            statement.setString(2,uuid.toString());
+
+            int rowsAffected = statement.executeUpdate();
+
+            if (rowsAffected == 0) {
+                logger.severe("Failed to reset player account: " + uuid.toString());
+                return false;
+            }
+            return true;
+        }catch (SQLException e){
+            logger.severe("Error resetting player account: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean resetPlayerAccount(String player) {
+        String query = "UPDATE economy SET balance = ? WHERE LOWER(name) = LOWER(?)";
+        double balance = config.getDouble("starting-balance");
+        try(PreparedStatement statement = getConnection().prepareStatement(query)){
+            statement.setDouble(1,balance);
+            statement.setString(2,player);
+
+            int rowsAffected = statement.executeUpdate();
+
+            if (rowsAffected == 0) {
+                logger.severe("Failed to reset player account: " + player);
+                return false;
+            }
+            return true;
+        }catch (SQLException e){
+            logger.severe("Error resetting player account: " + e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean deletePlayerAccount(String player) {
+        String query = "DELETE FROM economy WHERE LOWER(name) = LOWER(?)";
+
+        try(PreparedStatement statement = getConnection().prepareStatement(query)){
+            statement.setString(1,player);
+            int rowsAffected = statement.executeUpdate();
+            if (rowsAffected == 0) {
+                logger.severe("Failed to delete player account: " + player);
+                return false;
+            }
+            return true;
+        }catch (SQLException e){
+            logger.severe("Error deleting player account: " + e.getMessage());
+        }
+        return false;
+    }
 }
