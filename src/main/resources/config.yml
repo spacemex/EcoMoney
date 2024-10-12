@@ -1,5 +1,29 @@
 setup-provider: true
+verbose-logging: true
+
 starting-balance: 500.0
+min-pay-amount: 0.10
+
+
+physical-currency:
+  enabled: true
+  
+  money:
+    # See https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Material.html For Items
+    item: PAPER
+    display-name: "&l&8Bank Note"
+    glowing: false
+    #%amount% is translated to the amount withdrawn
+    #%signer% is translated to the withdrawer's displayname
+    #supports Color codes
+    lore:
+      - " "
+      - "&n&8This Note Holds %amount%"
+      - " "
+      - "&n&l&6Signed by: %signer%"
+      - " "
+      - "&o&8Right click to deposit"
+
 
 data:
   storage-file: sqlite
